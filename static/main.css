@@ -1,0 +1,26 @@
+@charset "utf-8";
+
+header {
+    background-color: #AAAAAA;
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+table, th, td {
+    border: 1px solid;
+}
+
+h1, h2, h3 {
+    background-color: #CCCCCC;
+}
+
+/* zola 側の <pre><code> と衝突するので、面倒を避けるため廃止 */
+/*
+code, kbd {
+    background-color: #EEEEEE;
+}
+*/
