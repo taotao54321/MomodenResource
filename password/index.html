@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>桃太郎伝説 (FC) 攻略&#x2F;解析 - パスワード</title>
+
+  <link rel="stylesheet" href="https://taotao54321.github.io/MomodenResource/main.css">
+</head>
+<body>
+
+
+<header>
+  <a href="https://taotao54321.github.io/MomodenResource/">桃太郎伝説 (FC) 攻略&#x2F;解析</a>
+</header>
+
+<p>
+Published on: 2022-11-12
+
+</p>
+
+<h1>パスワード</h1>
+
+<p>筆者作のパスワードライブラリ <a href="https://github.com/taotao54321/momoden-password">momoden-password</a> も必要に応じて参照されたい。</p>
+<h2 id="sebudeta">セーブデータ</h2>
+<p>パスワードには以下のゲーム状態が記録される。これを抽象的に「セーブデータ」と呼ぶ。</p>
+<ul>
+<li>経験値 (16bit)</li>
+<li>所持金 (16bit)</li>
+<li>預金 (1000 単位、6bit)</li>
+<li>年齢 (8bit)</li>
+<li>加齢タイマー上位バイト (8bit)</li>
+<li>術習得状態 (8bit)</li>
+<li>イベント進行状態 (8bit)</li>
+<li>宝物所持状態 (5bit)</li>
+<li>お供存在状態 (3bit)</li>
+<li>ひえんブックマーク (10bit)</li>
+<li>復活地点 (4bit)</li>
+<li>装備:兜 (2bit)</li>
+<li>装備:武器 (4bit)</li>
+<li>装備:鎧 (4bit)</li>
+<li>装備:靴 (3bit)</li>
+<li>装備:いでたち0 (2bit)</li>
+<li>装備:いでたち1 (2bit)</li>
+<li>装備:いでたち2 (1bit)</li>
+<li>装備:いでたち3 (1bit)</li>
+<li>インベントリ (最小 6bit, 最大 48bit)</li>
+</ul>
+<p>セーブデータは最小 117bit, 最大 159bit となる。</p>
+<h2 id="sebudetanosiriaraizu">セーブデータのシリアライズ</h2>
+<p>セーブデータをビット列に変換することを「シリアライズ」、その逆変換を「デシリアライズ」と呼ぶ。</p>
+<p>セーブデータ内の個別の値をシリアライズする際は上位ビットから順に読む。<br />
+たとえば、6bit 値 <code>0b111001</code> はビット列 <code>[1, 1, 1, 0, 0, 1]</code> に変換される。</p>
+<p>セーブデータは以下の形式でシリアライズされる:</p>
+<table><thead><tr><th style="text-align: right">bit数</th><th>内容</th></tr></thead><tbody>
+<tr><td style="text-align: right">8</td><td>加齢タイマー上位バイト</td></tr>
+<tr><td style="text-align: right">8</td><td>所持金 bit8-15</td></tr>
+<tr><td style="text-align: right">8</td><td>年齢</td></tr>
+<tr><td style="text-align: right">8</td><td>所持金 bit0-7</td></tr>
+<tr><td style="text-align: right">8</td><td>経験値 bit0-7</td></tr>
+<tr><td style="text-align: right">6</td><td>預金</td></tr>
+<tr><td style="text-align: right">8</td><td>経験値 bit8-15</td></tr>
+<tr><td style="text-align: right">8</td><td>術習得状態</td></tr>
+<tr><td style="text-align: right">5</td><td>宝物所持状態</td></tr>
+<tr><td style="text-align: right">4</td><td>復活地点</td></tr>
+<tr><td style="text-align: right">2</td><td>ひえんブックマーク bit8-9</td></tr>
+<tr><td style="text-align: right">3</td><td>お供存在状態</td></tr>
+<tr><td style="text-align: right">8</td><td>ひえんブックマーク bit0-7</td></tr>
+<tr><td style="text-align: right">8</td><td>イベント進行状態</td></tr>
+<tr><td style="text-align: right">2</td><td>装備:兜</td></tr>
+<tr><td style="text-align: right">4</td><td>装備:武器</td></tr>
+<tr><td style="text-align: right">4</td><td>装備:鎧</td></tr>
+<tr><td style="text-align: right">3</td><td>装備:靴</td></tr>
+<tr><td style="text-align: right">2</td><td>装備:いでたち0</td></tr>
+<tr><td style="text-align: right">2</td><td>装備:いでたち1</td></tr>
+<tr><td style="text-align: right">1</td><td>装備:いでたち2</td></tr>
+<tr><td style="text-align: right">1</td><td>装備:いでたち3</td></tr>
+<tr><td style="text-align: right">6-48</td><td>インベントリ(アイテムIDの配列)<br>8 個未満の場合、6bit の 0 で終端する</td></tr>
+</tbody></table>
+<p>デシリアライズ時は単にこのビット列をパースすればよい。</p>
+<p>なお、ゲーム中ではインベントリは常に先頭に詰められている(アイテムとアイテムの間に空欄が挟まることはない)ので、
+シリアライズされたインベントリに空欄が現れることはない。<br />
+チートで空欄を含むインベントリをシリアライズした場合は、空欄の内部値が 0 なので、それがインベントリ終端とみなされる。</p>
+<h2 id="siriaraizubatuhua">シリアライズバッファ</h2>
+<p>シリアライズされたビット列にはさらに 2 種類の 6bit チェックサムが付加される(全体で最小 129bit, 最大 171bit)。<br />
+このビット列全体はいったんバイト列に格納される。この格納用バイト列を「シリアライズバッファ」と呼ぶ。</p>
+<p>シリアライズバッファ内でのビット列の格納方法を示す。<br />
+まず、バッファ内の各バイトの上位 2bit は使われない。つまり各バイトは実質 6bit 値である。<br />
+そして、入力ビットは各バイトの上位ビットから順に格納される。図示すると以下のようになる:</p>
+<pre data-lang="text" style="background-color:#2b303b;color:#c0c5ce;" class="language-text "><code class="language-text" data-lang="text"><span>+----------+----------+----------+
+</span><span>|  Byte0   |  Byte1   |  Byte2   |
+</span><span>+----------+----------+----------+ ...
+</span><span>| ..012345 | ..6789AB | ..CDEFGH |
+</span><span>+----------+----------+----------+
+</span></code></pre>
+<p>たとえば、ビット列の先頭 8bit が <code>[1, 1, 1, 1, 0, 0, 0, 1]</code> ならば、以下のように格納される:</p>
+<pre data-lang="text" style="background-color:#2b303b;color:#c0c5ce;" class="language-text "><code class="language-text" data-lang="text"><span>+----------+----------+
+</span><span>|  Byte0   |  Byte1   |
+</span><span>+----------+----------+ ...
+</span><span>| ..111100 | ..01.... |
+</span><span>+----------+----------+
+</span></code></pre>
+<p>シリアライズバッファは可変長である。<br />
+セーブデータからシリアライズバッファに変換する場合、その長さは最後のビットが格納されたバイトまでとなる。<br />
+よって、この場合は最小 22 バイト、最大 29 バイトとなる(ビット数を 6 で切り上げ除算すると得られる)。</p>
+<p>なお、シリアライズバッファはパスワードから変換することでも得られる。<br />
+詳細は後述するが、この場合バッファのバイト数はパスワードの文字数と等しくなる(最小 1 バイト、最大 38 バイト)。<br />
+これではデシリアライズの際にビット数が不足しうるが、その場合は不足したビット全てを 1 として扱う。<br />
+(パスワード「ふ」をロードした状態がほとんど 1 のビットなのはこれが理由)</p>
+<h3 id="tietukusamu">チェックサム</h3>
+<p>シリアライズバッファの先頭 2 バイトはチェックサム格納領域となっており、残りはセーブデータをシリアライズしたビット列を格納している。</p>
+<p>チェックサムは 2 種類あり、それぞれ「add チェックサム」「xor チェックサム」と呼ぶ。計算方法は次の通り:</p>
+<ul>
+<li>add チェックサムは、チェックサム格納領域 2 バイトを除いた全バイトを mod 64 で加算した総和。</li>
+<li>xor チェックサムは、チェックサム格納領域 2 バイトを除いた全バイトの XOR (下位 6bit のみ)。</li>
+</ul>
+<p>いずれも 6bit 値となることに注意。<br />
+なお、パスワードから変換したシリアライズバッファで長さが 2 以下の場合、add/xor チェックサムはどちらも <code>0b111111</code> とする。</p>
+<p>そして、シリアライズバッファの先頭 2 バイトには add チェックサム、xor チェックサムがこの順で格納される。<br />
+このチェックサムが一致しているとき、そのときに限り、シリアライズバッファからゲーム状態をデシリアライズできる。</p>
+<h2 id="pasuwado">パスワード</h2>
+<p>まず、0 文字のパスワードおよび文字 '?' (「いれる」などで発生する)を含むパスワードは入力時点で無効となる。<br />
+また、以下の「特殊パスワード」の空でない接頭辞であるようなパスワードは音楽室/美術室行きとなる:</p>
+<ul>
+<li>すべてのきよくがききたいな</li>
+<li>すべてのてきがみたいな</li>
+</ul>
+<p>以下、このようなケースは除外して考える。</p>
+<p>パスワードの各文字は 6bit の内部値を持ち、これを「文字コード」と呼ぶ。対応表を以下に示す:</p>
+<table>
+  <thead>
+    <tr><th></th><th>x0</th><th>x1</th><th>x2</th><th>x3</th><th>x4</th><th>x5</th><th>x6</th><th>x7</th><th>x8</th><th>x9</th><th>xA</th><th>xB</th><th>xC</th><th>xD</th><th>xE</th><th>xF</th></tr>
+  </thead>
+  <tbody>
+    <tr><th>0x</th><td>あ</td><td>い</td><td>う</td><td>え</td><td>お</td><td>か</td><td>き</td><td>く</td><td>け</td><td>こ</td><td>さ</td><td>し</td><td>す</td><td>せ</td><td>そ</td><td>た</td></tr>
+    <tr><th>1x</th><td>ち</td><td>つ</td><td>て</td><td>と</td><td>な</td><td>に</td><td>ぬ</td><td>ね</td><td>の</td><td>は</td><td>ひ</td><td>ふ</td><td>へ</td><td>ほ</td><td>ま</td><td>み</td></tr>
+    <tr><th>2x</th><td>む</td><td>め</td><td>も</td><td>や</td><td>ゆ</td><td>よ</td><td>ら</td><td>り</td><td>る</td><td>れ</td><td>ろ</td><td>わ</td><td>が</td><td>ぎ</td><td>ぐ</td><td>げ</td></tr>
+    <tr><th>3x</th><td>ご</td><td>ざ</td><td>じ</td><td>ず</td><td>ぜ</td><td>ぞ</td><td>ば</td><td>び</td><td>ぶ</td><td>べ</td><td>ぼ</td><td>ぱ</td><td>ぴ</td><td>ぷ</td><td>ぺ</td><td>ぽ</td></tr>
+  </tbody>
+</table>
+<p>パスワードをシリアライズバッファに変換することを「デコード」、その逆変換を「エンコード」と呼ぶ。</p>
+<h3 id="pasuwadonodekodo">パスワードのデコード</h3>
+<p>パスワードのデコードは 2 段階で行われる。以下、パスワードの文字コード配列を <code>password</code> と書く。</p>
+<p>第 1 段階では、パスワードの末尾から順に以下の変換を行う(<code>^</code> は XOR):</p>
+<ul>
+<li><code>password[i] ^= password[i-1]</code> (<code>i &gt; 0</code>)</li>
+<li><code>password[0] ^= 0x1F</code></li>
+</ul>
+<p>Rust では以下のように書ける:</p>
+<pre data-lang="rust" style="background-color:#2b303b;color:#c0c5ce;" class="language-rust "><code class="language-rust" data-lang="rust"><span style="color:#b48ead;">for</span><span> i in (</span><span style="color:#d08770;">1</span><span>..password.</span><span style="color:#96b5b4;">len</span><span>()).</span><span style="color:#96b5b4;">rev</span><span>() {
+</span><span>    password[i] ^= password[i - </span><span style="color:#d08770;">1</span><span>];
+</span><span>}
+</span><span>password[</span><span style="color:#d08770;">0</span><span>] ^= </span><span style="color:#d08770;">0x1F</span><span>;
+</span></code></pre>
+<p>これは大まかに言って累積 XOR の逆変換になっている。</p>
+<p>第 2 段階では、パスワードの各文字について以下の変換を行う(減算は mod 64。<code>%</code> は剰余):</p>
+<ul>
+<li><code>password[i] -= [0x05, 0x19, 0x32, 0x21][i % 4]</code></li>
+</ul>
+<p>Rust では以下のように書ける:</p>
+<pre data-lang="rust" style="background-color:#2b303b;color:#c0c5ce;" class="language-rust "><code class="language-rust" data-lang="rust"><span style="color:#b48ead;">for </span><span>(i, b) in password.</span><span style="color:#96b5b4;">iter_mut</span><span>().</span><span style="color:#96b5b4;">enumerate</span><span>() {
+</span><span>    *b = b.</span><span style="color:#96b5b4;">wrapping_sub</span><span>([</span><span style="color:#d08770;">0x05</span><span>, </span><span style="color:#d08770;">0x19</span><span>, </span><span style="color:#d08770;">0x32</span><span>, </span><span style="color:#d08770;">0x21</span><span>][i % </span><span style="color:#d08770;">4</span><span>]);
+</span><span>    *b &amp;= </span><span style="color:#d08770;">0x3F</span><span>;
+</span><span>}
+</span></code></pre>
+<p>この変換結果がそのままシリアライズバッファとなる。<br />
+エンコードについてはこれの逆を行うだけなので省略する。</p>
+<p>以上より、1 文字の有効なパスワードは「ふ」しかないことがわかる。<br />
+パスワードの先頭 1 文字は add チェックサムに対応しており、これが <code>0b111111</code> になる必要があるが、デコード処理の内容から、そのような入力は 1 通りしかないため。<br />
+同様にして 2 文字の有効なパスワードが「ふえ」しかないこともわかる(対応するセーブデータは「ふ」と同一)。</p>
+<p>また、実は 2 文字目の文字コード (<code>password[1]</code>) が偶数であるパスワードは必ず無効となることが示せる。</p>
+<details><summary>証明</summary>
+<p>add チェックサム、xor チェックサムをそれぞれ <code>sum_add</code>, <code>sum_xor</code> とおく。<br />
+一般に add と xor の偶奇は一致するので、<code>sum_add</code> と <code>sum_xor</code> の偶奇が異なるなら有効なパスワードにはなりえない。</p>
+<p>パスワードの先頭 2 文字を <code>prefix</code> とおくと、<code>sum_add</code>, <code>sum_xor</code> は次のように求まる:</p>
+<ul>
+<li><code>sum_add = ((prefix[0] ^ 0x1F) - 0x05) &amp; 0x3F</code></li>
+<li><code>sum_xor = ((prefix[1] ^ prefix[0]) - 0x19) &amp; 0x3F</code></li>
+</ul>
+<p>ここで bit0 のみに注目すると、以下のようになっている:</p>
+<table><thead><tr><th style="text-align: center">prefix[0]</th><th style="text-align: center">prefix[1]</th><th style="text-align: center">sum_add</th><th style="text-align: center">sum_xor</th><th style="text-align: center">invalid</th></tr></thead><tbody>
+<tr><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">1</td><td style="text-align: center">1</td></tr>
+<tr><td style="text-align: center">0</td><td style="text-align: center">1</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td></tr>
+<tr><td style="text-align: center">1</td><td style="text-align: center">0</td><td style="text-align: center">1</td><td style="text-align: center">0</td><td style="text-align: center">1</td></tr>
+<tr><td style="text-align: center">1</td><td style="text-align: center">1</td><td style="text-align: center">1</td><td style="text-align: center">1</td><td style="text-align: center">0</td></tr>
+</tbody></table>
+<p>よって、<code>prefix[1]</code> が偶数ならば有効なパスワードにはなりえない。</p>
+</details>
+<h2 id="bu-zheng-nasebudetanorodochu-li">不正なセーブデータのロード処理</h2>
+<p>パスワードとセーブデータの相互変換は以上の通りだが、一部のパスワード(「ふ」など)は変換結果のセーブデータに不正な値が含まれる。<br />
+セーブデータが不正でもロード自体はできるが、不正な装備はロード時にある種の(意図しない)変換がなされるので、これについて述べる。</p>
+<p>まず、セーブデータ内の各部位の装備の値はアイテムIDそのものではなく、各部位に割り当てられたアイテムテーブル内のインデックスとなっている。<br />
+これらのインデックスは固定ビット長で記録されるが、アイテムテーブルは必ずしもサイズが 2 のべき乗になっていないため、不正なインデックスを与えるとテーブルの範囲外を参照してしまう。</p>
+<p>各部位のアイテムテーブルは (部位インデックスのビット長、アイテムリスト) の形式で連続して並んでいる。これをダンプしたものを示す:</p>
+<table><thead><tr><th style="text-align: right">部位内インデックス</th><th>内容</th></tr></thead><tbody>
+<tr><td style="text-align: right">兜:0</td><td>2 (兜インデックスのビット長)</td></tr>
+<tr><td style="text-align: right">兜:1</td><td>14 (はちまき)</td></tr>
+<tr><td style="text-align: right">兜:2</td><td>15 (はちがね)</td></tr>
+<tr><td style="text-align: right"></td><td>0 (兜の終端)</td></tr>
+<tr><td style="text-align: right">武器:0</td><td>4 (武器インデックスのビット長)</td></tr>
+<tr><td style="text-align: right">武器:1</td><td>29 (ぼくとう)</td></tr>
+<tr><td style="text-align: right">武器:2</td><td>30 (かたな)</td></tr>
+<tr><td style="text-align: right">武器:3</td><td>31 (あすかのけん)</td></tr>
+<tr><td style="text-align: right">武器:4</td><td>32 (すざくのけん)</td></tr>
+<tr><td style="text-align: right">武器:5</td><td>33 (びゃっこのけん)</td></tr>
+<tr><td style="text-align: right">武器:6</td><td>34 (ひりゅうのけん)</td></tr>
+<tr><td style="text-align: right">武器:7</td><td>35 (あしゅらのけん)</td></tr>
+<tr><td style="text-align: right">武器:8</td><td>36 (ほうおうのけん)</td></tr>
+<tr><td style="text-align: right">武器:9</td><td>39 (オニのかなぼう)</td></tr>
+<tr><td style="text-align: right">武器:10</td><td>41 (ゆうきのけん)</td></tr>
+<tr><td style="text-align: right"></td><td>0 (武器の終端)</td></tr>
+<tr><td style="text-align: right">鎧:0</td><td>4 (鎧インデックスのビット長)</td></tr>
+<tr><td style="text-align: right">鎧:1</td><td>17 (たけのどう)</td></tr>
+<tr><td style="text-align: right">鎧:2</td><td>18 (あかどう)</td></tr>
+<tr><td style="text-align: right">鎧:3</td><td>19 (むつきのどう)</td></tr>
+<tr><td style="text-align: right">鎧:4</td><td>20 (きさらぎのどう)</td></tr>
+<tr><td style="text-align: right">鎧:5</td><td>21 (やよいのどう)</td></tr>
+<tr><td style="text-align: right">鎧:6</td><td>22 (うづきのどう)</td></tr>
+<tr><td style="text-align: right">鎧:7</td><td>23 (さつきのどう)</td></tr>
+<tr><td style="text-align: right">鎧:8</td><td>24 (みなづきのどう)</td></tr>
+<tr><td style="text-align: right">鎧:9</td><td>25 (ゆうきのどう)</td></tr>
+<tr><td style="text-align: right"></td><td>0 (鎧の終端)</td></tr>
+<tr><td style="text-align: right">靴:0</td><td>3 (靴インデックスのビット長)</td></tr>
+<tr><td style="text-align: right">靴:1</td><td>8 (かんじき)</td></tr>
+<tr><td style="text-align: right">靴:2</td><td>26 (ウサギのたび)</td></tr>
+<tr><td style="text-align: right">靴:3</td><td>27 (シカのたび)</td></tr>
+<tr><td style="text-align: right">靴:4</td><td>28 (シシのたび)</td></tr>
+<tr><td style="text-align: right"></td><td>0 (靴の終端)</td></tr>
+<tr><td style="text-align: right">いでたち0:0</td><td>2 (いでたち0インデックスのビット長)</td></tr>
+<tr><td style="text-align: right">いでたち0:1</td><td>9 (じんばおり)</td></tr>
+<tr><td style="text-align: right">いでたち0:2</td><td>10 (ツルのはおり)</td></tr>
+<tr><td style="text-align: right"></td><td>0 (いでたち0の終端)</td></tr>
+<tr><td style="text-align: right">いでたち1:0</td><td>2 (いでたち1インデックスのビット長)</td></tr>
+<tr><td style="text-align: right">いでたち1:1</td><td>11 (カイロ)</td></tr>
+<tr><td style="text-align: right">いでたち1:2</td><td>47 (タカのツメ)</td></tr>
+<tr><td style="text-align: right"></td><td>0 (いでたち1の終端)</td></tr>
+<tr><td style="text-align: right">いでたち2:0</td><td>1 (いでたち2インデックスのビット長)</td></tr>
+<tr><td style="text-align: right">いでたち2:1</td><td>13 (おまもり)</td></tr>
+<tr><td style="text-align: right"></td><td>0 (いでたち2の終端)</td></tr>
+<tr><td style="text-align: right">いでたち3:0</td><td>1 (いでたち3インデックスのビット長)</td></tr>
+<tr><td style="text-align: right">いでたち3:1</td><td>16 (てっこう)</td></tr>
+<tr><td style="text-align: right"></td><td>0 (いでたち3の終端)</td></tr>
+</tbody></table>
+<p>なお、各部位のインデックスが 0 の場合は無装備となる。</p>
+<p>これを見ると、ほとんどのアイテムテーブルはサイズが 2 のべき乗になっていないことがわかる。<br />
+たとえば武器インデックスは 4bit だが、値を 15 にすると武器テーブルの範囲外、つまり鎧テーブル内の「むつきのどう」を参照してしまう。</p>
+<p>このときの挙動だが、ロード時の装備復元処理は「アイテムIDを受け取り、それを装備可能な部位に装備する」という実装になっている(現在どの部位を復元しているかは見ていない)。<br />
+よって、テーブル範囲外を参照した場合、それが別部位に装備可能なアイテムIDならばそのまま別部位に装備される。<br />
+どの部位にも装備できないアイテムID(空欄を表す 0 など)は単に無視される。</p>
+<p>これだと同部位に重複装備が起こりうるが、その場合は後から装備されたものが優先される。<br />
+(各部位は兜、武器、鎧、靴、いでたち0, いでたち1, いでたち2, いでたち3 の順に処理される)</p>
+<p>例としてパスワード「ふ」(装備変換前セーブデータの全ビットが 1)の装備復元処理を示す:</p>
+<ul>
+<li>初期状態は全部位が無装備。</li>
+<li>兜インデックスは 3 である。これは空欄 0 を指すので無視する。</li>
+<li>武器インデックスは 15 である。これは「むつきのどう」を指すので鎧枠に装備する。</li>
+<li>鎧インデックスは 15 である。これは「シシのたび」を指すので靴枠に装備する。</li>
+<li>靴インデックスは 7 である。これは「じんばおり」を指すのでいでたち0枠に装備する。</li>
+<li>いでたち0インデックスは 3 である。これは空欄 0 を指すので無視する。</li>
+<li>いでたち1インデックスは 3 である。これは空欄 0 を指すので無視する。</li>
+<li>いでたち2インデックスは 1 である。これは「おまもり」を指すので通常通り装備する。</li>
+<li>いでたち3インデックスは 1 である。これは「てっこう」を指すので通常通り装備する。</li>
+</ul>
+
+
+
+</body>
+</html>
